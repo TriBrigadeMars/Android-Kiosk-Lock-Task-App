@@ -97,8 +97,8 @@ The `.exe` is a single 36 MB file — no installer, no dependencies. It bundles 
 
 Non-technical users don't need to build anything. A prepackaged Windows `.exe` is built automatically on every push to `main`/`master` by the `.github/workflows/build-exe.yml` workflow and can be downloaded two ways:
 
+- **GitHub Releases** (recommended) — a rolling **Latest build** release is published automatically on every push to `main`/`master`, so `CU-Denver-Equity-Kiosk-Manager.exe` is always downloadable from the repo's **Releases** page — no PR or build required. Versioned releases are also created when a version tag (e.g. `v1.0.0`) is pushed.
 - **GitHub Actions artifacts** — open the **Actions** tab, select the latest **Build Windows EXE** run, and download the `Windows-EXE` artifact.
-- **GitHub Releases** — when a version tag (e.g. `v1.0.0`) is pushed, the workflow attaches `CU-Denver-Equity-Kiosk-Manager.exe` to a Release. Download it from the **Releases** page.
 
 The `.exe` is a single self-contained file (bundles ADB, the kiosk APK, and Test DPC) — no installer or dependencies. Just double-click it, connect the tablet via USB, and click **Setup Kiosk**.
 

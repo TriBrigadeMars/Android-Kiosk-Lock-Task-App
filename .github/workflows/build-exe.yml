@@ -52,7 +52,25 @@ jobs:
           path: dist/CU-Denver-Equity-Kiosk-Manager.exe
           retention-days: 30
 
-      - name: Create GitHub Release (on version tag)
+      # Rolling "latest" release — always keeps the newest .exe downloadable
+      # from the repo's Releases page, no tag or PR required.
+      - name: Publish rolling latest release (push to main/master)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          body: |
+            Latest Windows build of the CU Denver Equity Kiosk Manager.
+            Built automatically from the latest commit on main/master.
+            Download `CU-Denver-Equity-Kiosk-Manager.exe` below, double-click it,
+            connect the tablet via USB, and click **Setup Kiosk**.
+          files: dist/CU-Denver-Equity-Kiosk-Manager.exe
+          update_release_body: true
+          fail_on_unmatched_files: true
+
+      # Versioned release — attach the .exe when a version tag is pushed.
+      - name: Create versioned GitHub Release (on version tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
