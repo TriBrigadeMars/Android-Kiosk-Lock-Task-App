@@ -1,0 +1,73 @@
+name: Build macOS DMG
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+jobs:
+  build-dmg:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Download Android Platform Tools (macOS)
+        run: |
+          curl -L -o /tmp/platform-tools.zip \
+            "https://dl.google.com/android/repository/platform-tools-latest-darwin.zip"
+          unzip -o /tmp/platform-tools.zip -d .
+
+      - name: Build APK (skip — use pre-built)
+        run: |
+          mkdir -p dist/build
+          if [ -f "build/CU-Denver-Equity-Kiosk.apk" ]; then
+            cp build/CU-Denver-Equity-Kiosk.apk dist/build/
+            echo "Using pre-built APK"
+          else
+            echo "No pre-built APK found. Build it first on Windows/Linux."
+            echo "Run: bash build-apk.sh and commit build/CU-Denver-Equity-Kiosk.apk"
+            exit 1
+          fi
+
+      - name: Install PyInstaller
+        run: pip3 install pyinstaller
+
+      - name: Build macOS .app
+        run: |
+          pyinstaller \
+            --onefile \
+            --windowed \
+            --name "CU-Denver-Equity-Kiosk-Manager" \
+            --add-data "platform-tools:platform-tools" \
+            --osx-bundle-identifier "edu.ucdenver.equity-kiosk-manager" \
+            kiosk-manager.py
+
+      - name: Create DMG
+        run: |
+          DMG_DIR="/tmp/kiosk-dmg"
+          rm -rf "$DMG_DIR"
+          mkdir -p "$DMG_DIR"
+
+          cp -R "dist/CU-Denver-Equity-Kiosk-Manager.app" "$DMG_DIR/"
+          mkdir -p "$DMG_DIR/Kiosk-APK"
+          cp dist/build/CU-Denver-Equity-Kiosk.apk "$DMG_DIR/Kiosk-APK/"
+
+          hdiutil create \
+            -volname "CU Denver Equity Kiosk Manager" \
+            -srcfolder "$DMG_DIR" \
+            -ov -format UDZO \
+            "CU-Denver-Equity-Kiosk-Manager.dmg"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macOS-DMG
+          path: CU-Denver-Equity-Kiosk-Manager.dmg
+          retention-days: 30

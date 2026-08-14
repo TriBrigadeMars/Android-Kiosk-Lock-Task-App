@@ -1,0 +1,26 @@
+# Toolchain downloads (run setup scripts to get these)
+platform-tools/
+android-sdk/
+jdk/
+
+# Build artifacts (keep only the final APK)
+dist/
+build/CU-Denver-Equity-Kiosk-Manager/
+build/gen/
+build/obj/
+build/*-aligned.apk
+build/*-unaligned.apk
+build/*.idsig
+*.spec
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp files
+/tmp/
+*.zip
+*.tmp
