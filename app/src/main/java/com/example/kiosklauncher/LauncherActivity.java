@@ -64,6 +64,24 @@ public class LauncherActivity extends Activity {
         label.setPadding(0, 16, 0, 0);
         layout.addView(label);
 
+        // WiFi settings button — lets users re-add credentials if the
+        // tablet gets disconnected from the network
+        TextView wifiButton = new TextView(this);
+        wifiButton.setText("WiFi Settings");
+        wifiButton.setTextColor(0xFFFFFFFF);
+        wifiButton.setTextSize(16);
+        wifiButton.setGravity(Gravity.CENTER);
+        wifiButton.setPadding(40, 28, 40, 28);
+        wifiButton.setBackgroundColor(0xFF2d5a8f);
+        wifiButton.setContentDescription("Open WiFi settings");
+        wifiButton.setOnClickListener(v -> openWifiSettings());
+        LinearLayout.LayoutParams wifiParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        wifiParams.setMargins(0, 48, 0, 0);
+        wifiButton.setLayoutParams(wifiParams);
+        layout.addView(wifiButton);
+
         setContentView(layout);
     }
 
@@ -77,6 +95,18 @@ public class LauncherActivity extends Activity {
             }
         };
         clockHandler.post(clockRunnable);
+    }
+
+    private void openWifiSettings() {
+        try {
+            Intent intent = new Intent();
+            intent.setClassName(KIOSK_PACKAGE, "com.example.webkiosk.WifiSettingsActivity");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open WiFi settings.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     private void launchKioskApp() {

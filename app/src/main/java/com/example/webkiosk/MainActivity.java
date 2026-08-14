@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowInsets;
@@ -17,6 +18,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceResponse;
 import android.net.Uri;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -103,7 +106,40 @@ public class MainActivity extends Activity {
         });
 
         webView.loadUrl(START_URL);
-        setContentView(webView);
+
+        // Container so we can overlay a small WiFi button on top of the web page.
+        // Lets a user re-add WiFi credentials if the tablet gets disconnected.
+        FrameLayout container = new FrameLayout(this);
+        container.addView(webView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+
+        Button wifiButton = new Button(this);
+        wifiButton.setText("WiFi");
+        wifiButton.setTextSize(14);
+        wifiButton.setContentDescription("Open WiFi settings");
+        wifiButton.setOnClickListener(v -> openWifiSettings());
+        FrameLayout.LayoutParams wifiParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT);
+        wifiParams.gravity = Gravity.BOTTOM | Gravity.END;
+        wifiParams.setMargins(0, 0, 24, 24);
+        wifiButton.setLayoutParams(wifiParams);
+        container.addView(wifiButton);
+
+        setContentView(container);
+    }
+
+    private void openWifiSettings() {
+        try {
+            android.content.Intent intent = new android.content.Intent();
+            intent.setClassName(getPackageName(), "com.example.webkiosk.WifiSettingsActivity");
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open WiFi settings.",
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     // ========== Fullscreen ==========
