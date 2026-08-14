@@ -2,6 +2,10 @@
 
 A complete toolkit for locking a Lenovo Tab K11 Gen 2 (Android 15) tablet into kiosk mode, displaying the [CU Denver Office of Equity](https://www.ucdenver.edu/offices/equity) website. Includes a portable Windows GUI for non-technical users, a custom Android launcher, and macOS build support.
 
+[![Download Windows .exe](https://img.shields.io/badge/Download-Windows%20.exe-2d5a8f?style=for-the-badge&logo=windows)](https://github.com/TriBrigadeMars/Android-Kiosk-Lock-Task-App/releases/latest/download/CU-Denver-Equity-Kiosk-Manager.exe)
+
+**Direct download:** [CU-Denver-Equity-Kiosk-Manager.exe](https://github.com/TriBrigadeMars/Android-Kiosk-Lock-Task-App/releases/latest/download/CU-Denver-Equity-Kiosk-Manager.exe) — a single self-contained file (bundles ADB, the kiosk APK, and Test DPC). No install needed: double-click it, connect the tablet via USB, and click **Setup Kiosk**.
+
 ---
 
 ## Architecture
