@@ -93,6 +93,17 @@ The `.exe` is a single 36 MB file — no installer, no dependencies. It bundles 
 
 ---
 
+## Download the prebuilt .exe
+
+Non-technical users don't need to build anything. A prepackaged Windows `.exe` is built automatically on every push to `main`/`master` by the `.github/workflows/build-exe.yml` workflow and can be downloaded two ways:
+
+- **GitHub Actions artifacts** — open the **Actions** tab, select the latest **Build Windows EXE** run, and download the `Windows-EXE` artifact.
+- **GitHub Releases** — when a version tag (e.g. `v1.0.0`) is pushed, the workflow attaches `CU-Denver-Equity-Kiosk-Manager.exe` to a Release. Download it from the **Releases** page.
+
+The `.exe` is a single self-contained file (bundles ADB, the kiosk APK, and Test DPC) — no installer or dependencies. Just double-click it, connect the tablet via USB, and click **Setup Kiosk**.
+
+---
+
 ## Building from source
 
 ### Windows
@@ -101,7 +112,12 @@ setup-tools.bat        # One-time: downloads ADB, JDK 17, Android SDK
 bash build-apk.sh      # Compiles the kiosk APK
 ```
 
-Then package the GUI:
+Then package the GUI (or just run the one-step script):
+```bash
+bash package-win.sh   # Builds the APK and packages the .exe
+```
+
+Or manually:
 ```bash
 pip install pyinstaller qrcode pillow
 python -m PyInstaller --onefile --windowed --name "CU-Denver-Equity-Kiosk-Manager" \
@@ -145,7 +161,8 @@ Or push to GitHub — the `.github/workflows/build-dmg.yml` auto-builds the macO
 ├── setup-kiosk.bat           # CLI deploy script
 ├── exit-kiosk.bat            # CLI exit script
 ├── package-mac.sh            # macOS .dmg builder
-├── .github/workflows/        # CI/CD
+├── package-win.sh            # Windows .exe builder
+├── .github/workflows/        # CI/CD (builds macOS .dmg + Windows .exe)
 ├── TestDPC.apk              # Bundled device policy controller
 ├── debug.keystore           # APK signing key
 ├── README.md                # This file
