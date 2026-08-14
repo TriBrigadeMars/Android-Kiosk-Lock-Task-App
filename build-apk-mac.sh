@@ -26,6 +26,7 @@ OBJ_DIR="$OUT_DIR/obj"
 APP_DIR="$SCRIPT_DIR/app/src/main"
 MANIFEST="$APP_DIR/AndroidManifest.xml"
 JAVA_SRC="$APP_DIR/java/com/example/webkiosk/MainActivity.java"
+WIFI_SRC="$APP_DIR/java/com/example/webkiosk/WifiSettingsActivity.java"
 LAUNCHER_SRC="$APP_DIR/java/com/example/kiosklauncher/LauncherActivity.java"
 RES_DIR="$APP_DIR/res"
 
@@ -60,6 +61,7 @@ echo "=== Compiling Java ==="
   -cp "$ANDROID_JAR" \
   "$GEN_DIR/com/example/webkiosk/R.java" \
   "$JAVA_SRC" \
+  "$WIFI_SRC" \
   "$LAUNCHER_SRC"
 
 echo "=== Converting to DEX ==="

@@ -341,6 +341,13 @@ Android Kiosk-Lock Task Mode/
 - Remote Management Setup wizard (Android Management API enrollment + QR code)
 - ADB over Wi-Fi support
 
+### v1.8 — WiFi Recovery
+- Added `WifiSettingsActivity` — lets users add WiFi credentials (SSID + password) if the tablet disconn
+ects from the network
+- Uses the Android 10+ `WifiNetworkSuggestion` API with runtime permission handling (`NEARBY_WIFI_DEVICES` on Android 13+, `ACCESS_FINE_LOCATION` on Android 10-12)
+- Entry points: a "WiFi Settings" button on the custom launcher and a small overlay button in the kiosk app
+- Updated `AndroidManifest.xml` and both build scripts to include the new activity
+
 ### v1.7 — Stability Fixes
 - WebView crash resilience: custom error page with Retry
 - Lock task lifecycle race prevention (`mInLockTask` guard)

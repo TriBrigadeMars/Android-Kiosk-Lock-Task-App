@@ -85,6 +85,12 @@ The `.exe` is a single 36 MB file — no installer, no dependencies. It bundles 
 - No app drawer — users cannot access any other apps
 - Clean Android lifecycle with clock handler cleanup
 
+### WiFi Settings (`WifiSettingsActivity.java`)
+- Lets users add WiFi credentials (SSID + password) if the tablet drops off the network
+- Uses the Android 10+ `WifiNetworkSuggestion` API; the system prompts the user to approve the network
+- Runtime permission handling (`NEARBY_WIFI_DEVICES` on Android 13+, `ACCESS_FINE_LOCATION` on Android 10-12)
+- Reachable from a "WiFi Settings" button on the launcher and a small overlay button in the kiosk app
+
 ---
 
 ## Building from source

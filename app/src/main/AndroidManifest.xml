@@ -3,6 +3,13 @@
     package="com.example.webkiosk">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- WiFi connection on Android 13+ (Android 15 tablet) -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+    <!-- WiFi connection on Android 10-12 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:allowBackup="true"
@@ -20,6 +27,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- WiFi credential management (opened from launcher or kiosk app) -->
+        <activity
+            android:name=".WifiSettingsActivity"
+            android:exported="false"
+            android:lockTaskMode="if_whitelisted" />
 
         <!-- Custom launcher — only shows the kiosk app -->
         <activity
