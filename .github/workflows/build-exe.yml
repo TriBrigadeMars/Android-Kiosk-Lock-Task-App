@@ -9,6 +9,8 @@ on:
 jobs:
   build-exe:
     runs-on: windows-latest
+    permissions:
+      contents: write  # needed to create/update the GitHub Release
 
     steps:
       - name: Checkout
@@ -66,7 +68,6 @@ jobs:
             Download `CU-Denver-Equity-Kiosk-Manager.exe` below, double-click it,
             connect the tablet via USB, and click **Setup Kiosk**.
           files: dist/CU-Denver-Equity-Kiosk-Manager.exe
-          update_release_body: true
           fail_on_unmatched_files: true
 
       # Versioned release — attach the .exe when a version tag is pushed.
