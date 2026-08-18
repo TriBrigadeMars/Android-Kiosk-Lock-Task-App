@@ -4,14 +4,18 @@ import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.format.DateFormat;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.webkiosk.KioskDeviceAdminReceiver;
 
 import java.util.Date;
 
@@ -64,25 +68,84 @@ public class LauncherActivity extends Activity {
         label.setPadding(0, 16, 0, 0);
         layout.addView(label);
 
-        // WiFi settings button — lets users re-add credentials if the
+        // Chrome button — opens Google Chrome in lock task mode
+        TextView chromeButton = new TextView(this);
+        chromeButton.setText("Chrome");
+        chromeButton.setTextColor(0xFFFFFFFF);
+        chromeButton.setTextSize(16);
+        chromeButton.setGravity(Gravity.CENTER);
+        chromeButton.setPadding(40, 28, 40, 28);
+        chromeButton.setBackgroundColor(0xFF2d5a8f);
+        chromeButton.setContentDescription("Open Google Chrome");
+        chromeButton.setOnClickListener(v -> openChrome());
+        LinearLayout.LayoutParams chromeParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        chromeParams.setMargins(0, 48, 0, 0);
+        chromeButton.setLayoutParams(chromeParams);
+        layout.addView(chromeButton);
+
+        // System WiFi settings button — opens the tablet's WiFi settings screen
+        TextView sysWifiButton = new TextView(this);
+        sysWifiButton.setText("WiFi Settings");
+        sysWifiButton.setTextColor(0xFFFFFFFF);
+        sysWifiButton.setTextSize(16);
+        sysWifiButton.setGravity(Gravity.CENTER);
+        sysWifiButton.setPadding(40, 28, 40, 28);
+        sysWifiButton.setBackgroundColor(0xFF2d5a8f);
+        sysWifiButton.setContentDescription("Open system WiFi settings");
+        sysWifiButton.setOnClickListener(v -> openSystemWifiSettings());
+        LinearLayout.LayoutParams sysWifiParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        sysWifiParams.setMargins(0, 16, 0, 0);
+        sysWifiButton.setLayoutParams(sysWifiParams);
+        layout.addView(sysWifiButton);
+
+        // Add WiFi Network button — lets users re-add credentials if the
         // tablet gets disconnected from the network
         TextView wifiButton = new TextView(this);
-        wifiButton.setText("WiFi Settings");
+        wifiButton.setText("Add WiFi Network");
         wifiButton.setTextColor(0xFFFFFFFF);
         wifiButton.setTextSize(16);
         wifiButton.setGravity(Gravity.CENTER);
         wifiButton.setPadding(40, 28, 40, 28);
         wifiButton.setBackgroundColor(0xFF2d5a8f);
-        wifiButton.setContentDescription("Open WiFi settings");
+        wifiButton.setContentDescription("Add a WiFi network");
         wifiButton.setOnClickListener(v -> openWifiSettings());
         LinearLayout.LayoutParams wifiParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
-        wifiParams.setMargins(0, 48, 0, 0);
+        wifiParams.setMargins(0, 16, 0, 0);
         wifiButton.setLayoutParams(wifiParams);
         layout.addView(wifiButton);
 
         setContentView(layout);
+
+        // If this app is the device owner, make sure Chrome and WiFi settings
+        // are in the lock task allowlist so they can run in kiosk mode.
+        KioskDeviceAdminReceiver.configureLockTask(this);
+    }
+
+    private void openChrome() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"));
+            intent.setPackage("com.android.chrome");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Chrome is not installed.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void openSystemWifiSettings() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_WIFI_SETTINGS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Could not open WiFi settings.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void startClock() {

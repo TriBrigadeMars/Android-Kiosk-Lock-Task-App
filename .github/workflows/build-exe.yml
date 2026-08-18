@@ -44,7 +44,6 @@ jobs:
           pyinstaller --onefile --windowed --name "CU-Denver-Equity-Kiosk-Manager" `
             --add-data "platform-tools;platform-tools" `
             --add-data "build/CU-Denver-Equity-Kiosk.apk;." `
-            --add-data "TestDPC.apk;." `
             kiosk-manager.py
 
       - name: Upload EXE artifact

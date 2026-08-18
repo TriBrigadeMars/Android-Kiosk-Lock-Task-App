@@ -3,6 +3,7 @@ package com.example.webkiosk;
 import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,6 +21,7 @@ import android.webkit.WebResourceResponse;
 import android.net.Uri;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
@@ -107,27 +109,57 @@ public class MainActivity extends Activity {
 
         webView.loadUrl(START_URL);
 
-        // Container so we can overlay a small WiFi button on top of the web page.
-        // Lets a user re-add WiFi credentials if the tablet gets disconnected.
+        // Container so we can overlay small buttons on top of the web page.
+        // Lets a user open Chrome or re-add WiFi credentials if the tablet
+        // gets disconnected.
         FrameLayout container = new FrameLayout(this);
         container.addView(webView, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT));
+
+        // Bottom-right overlay bar with Chrome and WiFi buttons.
+        LinearLayout overlay = new LinearLayout(this);
+        overlay.setOrientation(LinearLayout.HORIZONTAL);
+        overlay.setGravity(Gravity.CENTER);
+
+        Button chromeButton = new Button(this);
+        chromeButton.setText("Chrome");
+        chromeButton.setTextSize(14);
+        chromeButton.setContentDescription("Open Google Chrome");
+        chromeButton.setOnClickListener(v -> openChrome());
+        overlay.addView(chromeButton);
 
         Button wifiButton = new Button(this);
         wifiButton.setText("WiFi");
         wifiButton.setTextSize(14);
         wifiButton.setContentDescription("Open WiFi settings");
         wifiButton.setOnClickListener(v -> openWifiSettings());
-        FrameLayout.LayoutParams wifiParams = new FrameLayout.LayoutParams(
+        overlay.addView(wifiButton);
+
+        FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT);
-        wifiParams.gravity = Gravity.BOTTOM | Gravity.END;
-        wifiParams.setMargins(0, 0, 24, 24);
-        wifiButton.setLayoutParams(wifiParams);
-        container.addView(wifiButton);
+        overlayParams.gravity = Gravity.BOTTOM | Gravity.END;
+        overlayParams.setMargins(0, 0, 24, 24);
+        overlay.setLayoutParams(overlayParams);
+        container.addView(overlay);
 
         setContentView(container);
+
+        // If this app is the device owner, make sure Chrome and WiFi settings
+        // are in the lock task allowlist so they can run in kiosk mode.
+        KioskDeviceAdminReceiver.configureLockTask(this);
+    }
+
+    private void openChrome() {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"));
+            intent.setPackage("com.android.chrome");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Chrome is not installed.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void openWifiSettings() {
