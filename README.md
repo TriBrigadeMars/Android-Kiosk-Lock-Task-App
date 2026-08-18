@@ -4,7 +4,7 @@ A complete toolkit for locking a Lenovo Tab K11 Gen 2 (Android 15) tablet into k
 
 [![Download Windows .exe](https://img.shields.io/badge/Download-Windows%20.exe-2d5a8f?style=for-the-badge&logo=windows)](https://github.com/TriBrigadeMars/Android-Kiosk-Lock-Task-App/releases/latest/download/CU-Denver-Equity-Kiosk-Manager.exe)
 
-**Direct download:** [CU-Denver-Equity-Kiosk-Manager.exe](https://github.com/TriBrigadeMars/Android-Kiosk-Lock-Task-App/releases/latest/download/CU-Denver-Equity-Kiosk-Manager.exe) — a single self-contained file (bundles ADB, the kiosk APK, and Test DPC). No install needed: double-click it, connect the tablet via USB, and click **Setup Kiosk**.
+**Direct download:** [CU-Denver-Equity-Kiosk-Manager.exe](https://github.com/TriBrigadeMars/Android-Kiosk-Lock-Task-App/releases/latest/download/CU-Denver-Equity-Kiosk-Manager.exe) — a single self-contained file (bundles ADB and the kiosk APK). No install needed: double-click it, connect the tablet via USB, and click **Setup Kiosk**.
 
 ---
 
@@ -28,9 +28,9 @@ Desktop PC                          Lenovo Tablet (Android 15)
                                    │  │ Fullscreen immersive    │  │
                                    │  └─────────────────────────┘  │
                                    │                               │
-                                   │  Allowlisted: com.example     │
-                                   │  .webkiosk only               │
-                                   │  Device owner: Test DPC       │
+                                   │  Allowlisted: kiosk, Chrome, │
+                                   │  WiFi settings                │
+                                   │  Device owner: kiosk app      │
                                    └──────────────────────────────┘
 ```
 
@@ -52,18 +52,18 @@ Desktop PC                          Lenovo Tablet (Android 15)
 1. Connect tablet via USB — accept the debugging prompt
 2. Double-click `dist/CU-Denver-Equity-Kiosk-Manager.exe`
 3. Click **Setup Kiosk**
-4. On the tablet, open **Test DPC → Lock Task Mode** — verify only `com.example.webkiosk` is allowlisted
-5. Tap the **CU Denver Equity** app to enter kiosk mode
+4. Tap the **CU Denver Equity** app once so it configures the lock task allowlist (kiosk, Chrome, WiFi settings)
+5. Tap the **CU Denver Equity** app again to enter kiosk mode
 
 ---
 
 ## Desktop GUI Reference
 
-The `.exe` is a single 36 MB file — no installer, no dependencies. It bundles ADB, the kiosk APK, and Test DPC APK inside.
+The `.exe` is a single 36 MB file — no installer, no dependencies. It bundles ADB and the kiosk APK inside.
 
 | Button | What it does |
 |--------|-------------|
-| **🔒 Setup Kiosk** | 7-step automated setup (check device → install Test DPC → set device owner → install kiosk APK → set launcher → hide apps → verify) |
+| **🔒 Setup Kiosk** | 6-step automated setup (check device → install kiosk APK → set device owner → set launcher → hide apps → verify) |
 | **🔓 Exit Kiosk** | Force-stops the kiosk app — tablet returns to launcher |
 | **📱 Restore All Apps** | Re-enables all hidden apps (Chrome, Settings, Play Store, etc.) |
 | **🌐 Setup Remote Management** | Guided wizard for Android Management API enrollment |
@@ -85,7 +85,7 @@ The `.exe` is a single 36 MB file — no installer, no dependencies. It bundles 
 - Memory management — WebView paused on background, properly destroyed on exit
 
 ### Custom Launcher (`LauncherActivity.java`)
-- Navy blue home screen with live clock and single kiosk app icon
+- Navy blue home screen with live clock, kiosk app icon, and **Chrome** / **WiFi Settings** buttons
 - No app drawer — users cannot access any other apps
 - Clean Android lifecycle with clock handler cleanup
 
@@ -93,7 +93,12 @@ The `.exe` is a single 36 MB file — no installer, no dependencies. It bundles 
 - Lets users add WiFi credentials (SSID + password) if the tablet drops off the network
 - Uses the Android 10+ `WifiNetworkSuggestion` API; the system prompts the user to approve the network
 - Runtime permission handling (`NEARBY_WIFI_DEVICES` on Android 13+, `ACCESS_FINE_LOCATION` on Android 10-12)
-- Reachable from a "WiFi Settings" button on the launcher and a small overlay button in the kiosk app
+- Reachable from an "Add WiFi Network" button on the launcher and a small overlay button in the kiosk app
+
+### Lock Task Mode & Device Owner (`KioskDeviceAdminReceiver.java`)
+- The kiosk app is provisioned as the **device owner** so it can manage the lock task allowlist itself
+- On launch it calls `setLockTaskPackages()` to allowlist the kiosk app, **Google Chrome** (`com.android.chrome`), and the **system WiFi settings** (`com.android.settings`)
+- The launcher and kiosk app expose **Chrome** and **WiFi Settings** buttons so these can be opened while in lock task mode
 
 ---
 
@@ -104,7 +109,7 @@ Non-technical users don't need to build anything. A prepackaged Windows `.exe` i
 - **GitHub Releases** (recommended) — a rolling **Latest build** release is published automatically on every push to `main`/`master`, so `CU-Denver-Equity-Kiosk-Manager.exe` is always downloadable from the repo's **Releases** page — no PR or build required. Versioned releases are also created when a version tag (e.g. `v1.0.0`) is pushed.
 - **GitHub Actions artifacts** — open the **Actions** tab, select the latest **Build Windows EXE** run, and download the `Windows-EXE` artifact.
 
-The `.exe` is a single self-contained file (bundles ADB, the kiosk APK, and Test DPC) — no installer or dependencies. Just double-click it, connect the tablet via USB, and click **Setup Kiosk**.
+The `.exe` is a single self-contained file (bundles ADB and the kiosk APK) — no installer or dependencies. Just double-click it, connect the tablet via USB, and click **Setup Kiosk**.
 
 ---
 
@@ -127,7 +132,6 @@ pip install pyinstaller qrcode pillow
 python -m PyInstaller --onefile --windowed --name "CU-Denver-Equity-Kiosk-Manager" \
   --add-data "platform-tools;platform-tools" \
   --add-data "build/CU-Denver-Equity-Kiosk.apk;." \
-  --add-data "TestDPC.apk;." \
   kiosk-manager.py
 ```
 
@@ -150,7 +154,7 @@ Or push to GitHub — the `.github/workflows/build-dmg.yml` auto-builds the macO
 | "Device not connected" | Use data-capable USB cable; re-enable USB Debugging; run `adb kill-server && adb devices` |
 | Cannot set device owner | Remove ALL Google accounts from tablet; check no other device admin active |
 | Back gesture fails | Swipe from bottom edge to reveal nav bar temporarily |
-| Launcher shows app drawer | Re-run Setup Kiosk; manually remove extra packages from Test DPC allowlist |
+| Launcher shows app drawer | Re-run Setup Kiosk; the kiosk app manages the lock task allowlist automatically |
 
 ---
 
@@ -167,7 +171,6 @@ Or push to GitHub — the `.github/workflows/build-dmg.yml` auto-builds the macO
 ├── package-mac.sh            # macOS .dmg builder
 ├── package-win.sh            # Windows .exe builder
 ├── .github/workflows/        # CI/CD (builds macOS .dmg + Windows .exe)
-├── TestDPC.apk              # Bundled device policy controller
 ├── debug.keystore           # APK signing key
 ├── README.md                # This file
 └── LICENSE                  # MIT
@@ -180,7 +183,7 @@ Or push to GitHub — the `.github/workflows/build-dmg.yml` auto-builds the macO
 adb devices
 
 # Set device owner
-adb shell dpm set-device-owner com.afwsamples.testdpc/.DeviceAdminReceiver
+adb shell dpm set-device-owner com.example.webkiosk/.KioskDeviceAdminReceiver
 
 # Exit kiosk mode
 adb shell am force-stop com.example.webkiosk

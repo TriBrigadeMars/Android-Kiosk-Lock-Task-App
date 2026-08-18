@@ -77,7 +77,7 @@ installation if needed.
 Requirements:
 - USB cable to connect the Lenovo tablet
 - USB Debugging enabled on the tablet
-- Test DPC installed on the tablet (from Google Play)
+- No Google accounts on the tablet (needed to set device owner)
 
 For support, refer to the Android Kiosk Lock Task Mode project folder.
 EOF

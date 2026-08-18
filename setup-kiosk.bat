@@ -28,15 +28,7 @@ if errorlevel 1 (
 )
 echo         Device connected.
 
-echo [2/4] Setting Test DPC as device owner...
-"%ADB%" shell dpm set-device-owner com.afwsamples.testdpc/.DeviceAdminReceiver 2>&1 | findstr /i "already\|Success" >nul
-if errorlevel 1 (
-    echo [WARNING] Could not set device owner. It may already be set.
-) else (
-    echo         Test DPC is now the device owner.
-)
-
-echo [3/4] Building and installing the kiosk APK...
+echo [2/4] Building and installing the kiosk APK...
 call bash build-apk.sh
 if not exist "build\CU-Denver-Equity-Kiosk.apk" (
     echo [ERROR] APK build failed.
@@ -52,13 +44,21 @@ if errorlevel 1 (
     echo         Kiosk APK installed successfully.
 )
 
-echo [4/4] Adding app to lock task allowlist...
-REM Test DPC auto-allowlists, but we verify
+echo [3/4] Setting kiosk app as device owner...
+"%ADB%" shell dpm set-device-owner com.example.webkiosk/.KioskDeviceAdminReceiver 2>&1 | findstr /i "already\|Success" >nul
+if errorlevel 1 (
+    echo [WARNING] Could not set device owner. It may already be set.
+    echo         If Test DPC was the previous device owner, you may need to factory reset first.
+) else (
+    echo         Kiosk app is now the device owner.
+)
+
+echo [4/4] Verifying lock task allowlist...
+REM The kiosk app configures the allowlist on first launch.
 "%ADB%" shell dumpsys device_policy 2>nul | findstr "com.example.webkiosk" >nul
 if errorlevel 1 (
-    echo [WARNING] App might not be allowlisted yet. Open Test DPC on the tablet:
-    echo         - Tap "Lock Task Mode"
-    echo         - Add "CU Denver Equity" to the allowlist
+    echo [WARNING] App might not be allowlisted yet. Open the kiosk app once
+    echo         so it can configure Chrome and WiFi settings for lock task mode.
 ) else (
     echo         App is allowlisted for lock task mode.
 )
@@ -70,6 +70,8 @@ echo ============================================
 echo.
 echo To enter kiosk mode, tap the "CU Denver Equity"
 echo app icon on your tablet's home screen.
+echo.
+echo Chrome and WiFi settings can now run in lock task mode.
 echo.
 echo To exit kiosk mode, run: exit-kiosk.bat
 echo.

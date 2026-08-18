@@ -44,7 +44,6 @@ rm -rf dist/"$APP_NAME" build/"$APP_NAME" "$APP_NAME".spec 2>/dev/null || true
 "$PY" -m PyInstaller --onefile --windowed --name "$APP_NAME" \
     --add-data "platform-tools;platform-tools" \
     --add-data "build/CU-Denver-Equity-Kiosk.apk;." \
-    --add-data "TestDPC.apk;." \
     kiosk-manager.py
 
 # Step 4: Cleanup

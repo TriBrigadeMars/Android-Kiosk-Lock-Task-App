@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">CU Denver Equity</string>
+    <string name="device_admin_label">CU Denver Equity Kiosk</string>
+    <string name="device_admin_description">Manages kiosk lock task mode so the kiosk app, Chrome, and WiFi settings can run.</string>
 </resources>

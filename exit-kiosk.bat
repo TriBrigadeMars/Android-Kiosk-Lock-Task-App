@@ -22,6 +22,6 @@ echo.
 echo Your tablet should now be back to normal.
 echo.
 echo To fully remove kiosk capability:
-echo    Settings ^> Security ^> Device Admin Apps ^> deactivate Test DPC
+echo    Settings ^> Security ^> Device Admin Apps ^> deactivate the kiosk app
 echo.
 pause

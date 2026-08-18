@@ -28,13 +28,11 @@ else:
 # APK: bundled inside .exe when frozen, alongside when running as script
 if getattr(sys, 'frozen', False):
     APK = os.path.join(BASE_DIR, "CU-Denver-Equity-Kiosk.apk")
-    TESTDPC_APK = os.path.join(BASE_DIR, "TestDPC.apk")
 else:
     APK = os.path.join(EXE_DIR, "build", "CU-Denver-Equity-Kiosk.apk")
-    TESTDPC_APK = os.path.join(EXE_DIR, "TestDPC.apk")
 PACKAGE = "com.example.webkiosk"
-DPC_PACKAGE = "com.afwsamples.testdpc"
-DPC = "com.afwsamples.testdpc/.DeviceAdminReceiver"
+DPC_PACKAGE = PACKAGE
+DPC = "com.example.webkiosk/.KioskDeviceAdminReceiver"
 
 
 def run_cmd(cmd, timeout=30):
@@ -364,7 +362,7 @@ class KioskManager:
                             device_line.split()[0], "#1a7a1a")
             self.log_add(f"Connected: {device_line}")
 
-            # check Test DPC
+            # check lock task allowlist
             out, err, rc = adb("shell dumpsys device_policy 2>nul | findstr \"LockTaskPolicy\"")
             if "com.example.webkiosk" in out:
                 self.log_add("Kiosk app is allowlisted. ✅")
@@ -378,38 +376,15 @@ class KioskManager:
             self.log_add("\n=== SETTING UP KIOSK ===")
 
             # Step 1: check device
-            self.log_add("[1/7] Checking connection...")
+            self.log_add("[1/6] Checking connection...")
             out, err, rc = adb("devices")
             if "device" not in out or "unauthorized" in out:
                 self.log_add("ERROR: Device not ready. Connect tablet and accept prompt.")
                 messagebox.showerror("Error", "Device not connected or unauthorized.\nConnect USB and accept the debugging prompt.")
                 return
 
-            # Step 2: install Test DPC
-            self.log_add("[2/7] Installing Test DPC...")
-            out, err, rc = adb(f"shell pm list packages {DPC_PACKAGE}")
-            if DPC_PACKAGE in out:
-                self.log_add("Test DPC already installed. ✅")
-            elif os.path.exists(TESTDPC_APK):
-                self.log_add("Installing Test DPC from bundled APK...")
-                out2, err2, rc2 = adb(f'install -r "{TESTDPC_APK}"')
-                if "Success" in out2:
-                    self.log_add("Test DPC installed. ✅")
-                else:
-                    self.log_add(f"Install note: {err2[:100]}")
-            else:
-                self.log_add("Test DPC APK not found. Install from Play Store.")
-
-            # Step 3: set device owner
-            self.log_add("[3/7] Setting device owner...")
-            out, err, rc = adb(f"shell dpm set-device-owner {DPC}")
-            if "Success" in out or "already" in err.lower():
-                self.log_add("Device owner OK.")
-            else:
-                self.log_add(f"Note: {err.strip() or out.strip()}")
-
-            # Step 4: install kiosk APK
-            self.log_add("[4/7] Installing kiosk APK...")
+            # Step 2: install kiosk APK (must be installed before device owner)
+            self.log_add("[2/6] Installing kiosk APK...")
             if not os.path.exists(APK):
                 self.log_add(f"APK not found: {APK}")
                 self.log_add("Run setup-kiosk.bat first to build the APK.")
@@ -427,8 +402,17 @@ class KioskManager:
                 else:
                     self.log_add(f"Install failed: {err2}")
 
-            # Step 5: set custom launcher as default home
-            self.log_add("[5/7] Setting kiosk launcher as default home...")
+            # Step 3: set the kiosk app as device owner
+            self.log_add("[3/6] Setting kiosk app as device owner...")
+            out, err, rc = adb(f"shell dpm set-device-owner {DPC}")
+            if "Success" in out or "already" in err.lower():
+                self.log_add("Device owner OK. ✅")
+            else:
+                self.log_add(f"Note: {err.strip() or out.strip()}")
+                self.log_add("If Test DPC was the previous device owner, you may need to factory reset first.")
+
+            # Step 4: set custom launcher as default home
+            self.log_add("[4/6] Setting kiosk launcher as default home...")
             out, err, rc = adb(
                 "shell cmd package set-home-activity"
                 " com.example.webkiosk/.kiosklauncher.LauncherActivity")
@@ -437,8 +421,8 @@ class KioskManager:
             else:
                 self.log_add("Note: launcher may already be set.")
 
-            # Step 6: hide non-essential apps
-            self.log_add("[6/7] Securing app drawer — hiding non-essential apps...")
+            # Step 5: hide non-essential apps
+            self.log_add("[5/6] Securing app drawer — hiding non-essential apps...")
             out, err, rc = adb(
                 "shell pm query-activities --brief"
                 " -a android.intent.action.MAIN"
@@ -448,34 +432,38 @@ class KioskManager:
                 for line in out.splitlines():
                     if line.strip().startswith("com."):
                         pkg = line.strip().split("/")[0]
-                        if pkg not in (PACKAGE, "com.afwsamples.testdpc",
-                                       "com.google.android.deskclock"):
+                        if pkg not in (PACKAGE, "com.google.android.deskclock"):
                             adb(f"shell pm disable-user --user 0 {pkg}")
                             hidden += 1
                 self.log_add(f"  {hidden} apps hidden from app drawer. ✅")
-                self.log_add("  Keeping: Kiosk, Test DPC, Clock.")
+                self.log_add("  Keeping: Kiosk, Clock.")
             else:
                 self.log_add("  Could not query app drawer.")
 
-            # Step 7: verify allowlist
-            self.log_add("[7/7] Checking lock task allowlist...")
+            # Step 6: verify lock task allowlist
+            self.log_add("[6/6] Checking lock task allowlist...")
             out, err, rc = adb("shell dumpsys device_policy 2>nul | findstr \"LockTaskPolicy\"")
             if PACKAGE in out:
-                self.log_add("App is allowlisted for lock task mode. ✅")
-                # Warn if other packages are still in the allowlist
-                if "com.afwsamples.testdpc" in out or "com.zui.launcher" in out:
-                    self.log_add("⚠  WARNING: Test DPC or ZUI launcher still allowlisted!")
-                    self.log_add("   Open Test DPC → Lock Task Mode → remove unnecessary packages.")
+                self.log_add("Kiosk app is allowlisted for lock task mode. ✅")
+                if "com.android.chrome" in out:
+                    self.log_add("Chrome is allowlisted. ✅")
+                else:
+                    self.log_add("Chrome not allowlisted yet — open the kiosk app once to apply the allowlist.")
+                if "com.android.settings" in out:
+                    self.log_add("WiFi settings are allowlisted. ✅")
+                else:
+                    self.log_add("WiFi settings not allowlisted yet — open the kiosk app once to apply the allowlist.")
             else:
-                self.log_add("App NOT allowlisted — open Test DPC on tablet to add it.")
+                self.log_add("App NOT allowlisted — open the kiosk app once so it can configure lock task mode.")
 
             self.log_add("\n=== DONE ===")
             self.log_add("Tap 'CU Denver Equity' on the tablet to enter kiosk mode.")
             self.check_status()
             messagebox.showinfo("Setup Complete",
                                 "Kiosk is ready!\n\n"
-                                "On the tablet, open the app drawer and\n"
-                                "tap 'CU Denver Equity' to enter kiosk mode.")
+                                "On the tablet, tap 'CU Denver Equity' to enter\n"
+                                "kiosk mode. Chrome and WiFi settings can now\n"
+                                "run in lock task mode.")
 
         self.run_in_thread(_setup)
 
@@ -485,7 +473,7 @@ class KioskManager:
             self.log_add("Stopping kiosk app...")
             out, err, rc = adb(f"shell am force-stop {PACKAGE}")
             self.log_add("App stopped. Tablet should return to home screen. ✅")
-            self.log_add("To fully remove: Settings > Security > Device Admin Apps > deactivate Test DPC")
+            self.log_add("To fully remove: Settings > Security > Device Admin Apps > deactivate the kiosk app")
             self.check_status()
             messagebox.showinfo("Kiosk Exited",
                                 "The kiosk app has been stopped.\n\n"
@@ -670,7 +658,7 @@ class KioskManager:
             "  • All apps will be removed\n"
             "  • All accounts will be deleted\n"
             "  • All settings will be reset\n"
-            "  • Test DPC / device owner will be cleared\n\n"
+            "  • Device owner will be cleared\n\n"
             "The tablet will reboot and return to the\n"
             "initial setup screen (like when it was new).\n\n"
             "This CANNOT be undone.\n\n"
