@@ -68,8 +68,11 @@ public class MainActivity extends Activity {
                 Uri uri = request.getUrl();
                 String host = uri.getHost();
                 if (host != null) {
+                    // Allow only the exact domain or a proper subdomain
+                    // (label-bounded) - plain endswith lets lookalike hosts
+                    // like 'evilucdenver.edu' slip through.
                     for (String domain : ALLOWED_DOMAINS) {
-                        if (host.endsWith(domain)) {
+                        if (host.equals(domain) || host.endsWith("." + domain)) {
                             return false;
                         }
                     }
@@ -281,6 +284,13 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Resume the WebView - we pause it in onPause() to save memory;
+        // forgetting this leaves the page frozen after returning from
+        // the WiFi settings screen or Chrome.
+        if (webView != null) {
+            webView.onResume();
+            webView.getSettings().setJavaScriptEnabled(true);
+        }
         if (!mInLockTask) {
             DevicePolicyManager dpm = (DevicePolicyManager)
                     getSystemService(Context.DEVICE_POLICY_SERVICE);

@@ -27,12 +27,41 @@ jobs:
           Expand-Archive -Path platform-tools.zip -DestinationPath . -Force
           Remove-Item platform-tools.zip
 
-      - name: Verify pre-built APK
+      - name: Build APK from source
+        # The release must always bundle an APK built from the CURRENT source,
+        # not a stale committed build/CU-Denver-Equity-Kiosk.apk.
+        # Set up JDK + Android SDK (mirrors setup-tools.bat), then run build-apk.sh.
+        shell: bash
+        run: |
+          set -e
+          # JDK 17
+          if [ ! -d "jdk/jdk-17.0.20+8" ]; then
+            mkdir -p jdk && cd jdk
+            curl -L -o jdk.zip "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse"
+            unzip -qo jdk.zip
+            cd ..
+          fi
+          # Android SDK command-line tools
+          if [ ! -d "android-sdk/cmdline-tools/latest" ]; then
+            curl -L -o cmdline-tools.zip "https://dl.google.com/android/repository/commandlinetools-win-13114758_latest.zip"
+            mkdir -p android-sdk/cmdline-tools
+            unzip -qo cmdline-tools.zip -d android-sdk/cmdline-tools
+            mv android-sdk/cmdline-tools/cmdline-tools android-sdk/cmdline-tools/latest
+            rm cmdline-tools.zip
+          fi
+          export JAVA_HOME=$(ls -d jdk/jdk-*/)
+          export ANDROID_SDK_ROOT="$PWD/android-sdk"
+          # Accept licenses + install platform/build-tools (best-effort)
+          echo y | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager.bat" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager.bat" --sdk_root="$ANDROID_SDK_ROOT" "platforms;android-35" "build-tools;35.0.0"
+          bash build-apk.sh
+
+      - name: Verify built APK
         run: |
           if (Test-Path "build/CU-Denver-Equity-Kiosk.apk") {
-            Write-Host "Using pre-built APK"
+            Write-Host "APK built from source"
           } else {
-            Write-Error "No pre-built APK found. Build it first (bash build-apk.sh) and commit build/CU-Denver-Equity-Kiosk.apk"
+            Write-Error "APK build failed"
             exit 1
           }
 
