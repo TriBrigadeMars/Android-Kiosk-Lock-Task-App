@@ -14,7 +14,13 @@ ANDROID_JAR="$PLATFORM/android.jar"
 OUT_DIR="$SCRIPT_DIR/build"
 GEN_DIR="$OUT_DIR/gen"
 OBJ_DIR="$OUT_DIR/obj"
-KEYSTORE="$SCRIPT_DIR/debug.keystore"
+
+# Signing key. NEVER commit the keystore or its password. A release build
+# supplies them via the environment (e.g. CI secrets or local env vars);
+# fall back to a *locally generated* debug keystore only when none is set.
+KEYSTORE="${KIOSK_KEYSTORE:-$SCRIPT_DIR/local_debug.keystore}"
+KEYSTORE_PASS="${KIOSK_KEYSTORE_PASS:-android}"
+KEYSTORE_ALIAS="${KIOSK_KEYSTORE_ALIAS:-androiddebugkey}"
 
 APP_DIR="$SCRIPT_DIR/app/src/main"
 MANIFEST="$APP_DIR/AndroidManifest.xml"
@@ -77,22 +83,23 @@ echo "=== Aligning APK ==="
   "$OUT_DIR/$APP_NAME-aligned.apk"
 
 echo "=== Signing APK ==="
-# Generate debug keystore if it doesn't exist (persists across builds)
+# Generate a keystore if it doesn't exist and none was supplied (persists
+# across builds, but is gitignored - never commit signing material).
 if [ ! -f "$KEYSTORE" ]; then
-  echo "=== Generating debug keystore ==="
+  echo "=== Generating ${KEYSTORE##*/} ==="
   "$JAVA_BIN/keytool" -genkey -v \
     -keystore "$KEYSTORE" \
-    -alias androiddebugkey \
+    -alias "$KEYSTORE_ALIAS" \
     -keyalg RSA -keysize 2048 -validity 10000 \
-    -storepass android \
-    -keypass android \
+    -storepass "$KEYSTORE_PASS" \
+    -keypass "$KEYSTORE_PASS" \
     -dname "CN=Android Debug, O=Android, C=US"
 fi
 
 "$JAVA_BIN/java" -jar "$BUILD_TOOLS_BIN/lib/apksigner.jar" sign \
   --ks "$KEYSTORE" \
-  --ks-pass pass:android \
-  --ks-key-alias androiddebugkey \
+  --ks-pass "pass:$KEYSTORE_PASS" \
+  --ks-key-alias "$KEYSTORE_ALIAS" \
   --out "$OUT_DIR/$APP_NAME.apk" \
   "$OUT_DIR/$APP_NAME-aligned.apk"
 

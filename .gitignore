@@ -2,6 +2,10 @@
 platform-tools/
 android-sdk/
 jdk/
+# Signing keys - NEVER commit these. Remove debug.keystore from tracking:
+#   git rm --cached debug.keystore
+# For release builds, supply KIOSK_KEYSTORE / KIOSK_KEYSTORE_PASS via env or CI secrets.
+*.keystore
 
 # Build artifacts (keep only the final APK)
 dist/

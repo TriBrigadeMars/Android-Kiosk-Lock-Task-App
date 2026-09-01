@@ -32,7 +32,11 @@ LAUNCHER_SRC="$APP_DIR/java/com/example/kiosklauncher/LauncherActivity.java"
 RES_DIR="$APP_DIR/res"
 
 APP_NAME="CU-Denver-Equity-Kiosk"
-KEYSTORE="$SCRIPT_DIR/debug.keystore"
+# Signing key - NEVER commit the keystore/password. Supply via env or CI
+# secrets for release builds; fall back to a local debug keystore otherwise.
+KEYSTORE="${KIOSK_KEYSTORE:-$SCRIPT_DIR/local_debug.keystore}"
+KEYSTORE_PASS="${KIOSK_KEYSTORE_PASS:-android}"
+KEYSTORE_ALIAS="${KIOSK_KEYSTORE_ALIAS:-androiddebugkey}"
 
 export JAVA_HOME="$JDK"
 
@@ -85,20 +89,20 @@ echo "=== Aligning APK ==="
 
 echo "=== Signing APK ==="
 if [ ! -f "$KEYSTORE" ]; then
-  echo "=== Generating debug keystore ==="
+  echo "=== Generating ${KEYSTORE##*/} ==="
   "$JDK/bin/keytool" -genkey -v \
     -keystore "$KEYSTORE" \
-    -alias androiddebugkey \
+    -alias "$KEYSTORE_ALIAS" \
     -keyalg RSA -keysize 2048 -validity 10000 \
-    -storepass android \
-    -keypass android \
+    -storepass "$KEYSTORE_PASS" \
+    -keypass "$KEYSTORE_PASS" \
     -dname "CN=Android Debug, O=Android, C=US"
 fi
 
 "$JDK/bin/java" -jar "$BUILD_TOOLS/lib/apksigner.jar" sign \
   --ks "$KEYSTORE" \
-  --ks-pass pass:android \
-  --ks-key-alias androiddebugkey \
+  --ks-pass "pass:$KEYSTORE_PASS" \
+  --ks-key-alias "$KEYSTORE_ALIAS" \
   --out "$OUT_DIR/$APP_NAME.apk" \
   "$OUT_DIR/$APP_NAME-aligned.apk"
 

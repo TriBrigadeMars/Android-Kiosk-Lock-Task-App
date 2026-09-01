@@ -171,14 +171,35 @@ class KioskManager:
         self.root.mainloop()
 
     # ---------- helpers ----------
+    def ui_call(self, fn, *args, **kwargs):
+        """Run *fn* on the main thread. Tkinter is NOT thread-safe, and the
+        worker threads (run_in_thread) touch log/status/dialog widgets, so
+        every UI update must be marshaled back to the main thread via
+        root.after(). Calling from the main thread is fine too."""
+        self.root.after(0, lambda: fn(*args, **kwargs))
+
     def log_add(self, text):
+        text = str(text)
+        self.ui_call(self._log_add, text)
+
+    def _log_add(self, text):
         self.log.insert("end", text + "\n")
         self.log.see("end")
         self.root.update_idletasks()
 
     def set_status(self, text, detail="", color="#000"):
+        self.ui_call(self._set_status, text, detail, color)
+
+    def _set_status(self, text, detail="", color="#000"):
         self.status_label.config(text=text, fg=color)
         self.status_details.config(text=detail)
+
+    def askbox(self, kind, title, msg, **kw):
+        """Show a messagebox from any thread by routing to the main thread."""
+        import tkinter.messagebox as mb
+        fn = {"showinfo": mb.showinfo, "showwarning": mb.showwarning,
+              "showerror": mb.showerror, "askyesno": mb.askyesno}[kind]
+        self.ui_call(fn, title, msg, **kw)
 
     def run_in_thread(self, target, *args):
         threading.Thread(target=target, args=args, daemon=True).start()
@@ -362,9 +383,10 @@ class KioskManager:
                             device_line.split()[0], "#1a7a1a")
             self.log_add(f"Connected: {device_line}")
 
-            # check lock task allowlist
-            out, err, rc = adb("shell dumpsys device_policy 2>nul | findstr \"LockTaskPolicy\"")
-            if "com.example.webkiosk" in out:
+            # check lock task allowlist (parse device_policy in Python so it
+            # works on Windows AND macOS/Linux - no cmd-only findstr/2>nul)
+            out, err, rc = adb("shell dumpsys device_policy")
+            if "com.example.webkiosk" in (out or ""):
                 self.log_add("Kiosk app is allowlisted. ✅")
             else:
                 self.log_add("Kiosk app NOT allowlisted yet.")
@@ -380,7 +402,7 @@ class KioskManager:
             out, err, rc = adb("devices")
             if "device" not in out or "unauthorized" in out:
                 self.log_add("ERROR: Device not ready. Connect tablet and accept prompt.")
-                messagebox.showerror("Error", "Device not connected or unauthorized.\nConnect USB and accept the debugging prompt.")
+                self.askbox("showerror", "Error", "Device not connected or unauthorized.\nConnect USB and accept the debugging prompt.")
                 return
 
             # Step 2: install kiosk APK (must be installed before device owner)
@@ -388,7 +410,7 @@ class KioskManager:
             if not os.path.exists(APK):
                 self.log_add(f"APK not found: {APK}")
                 self.log_add("Run setup-kiosk.bat first to build the APK.")
-                messagebox.showerror("Error", "APK not found.\nRun setup-kiosk.bat to build it first.")
+                self.askbox("showerror", "Error", "APK not found.\nRun setup-kiosk.bat to build it first.")
                 return
             out, err, rc = adb(f'install -r "{APK}"')
             if "Success" in out:
@@ -415,7 +437,7 @@ class KioskManager:
             self.log_add("[4/6] Setting kiosk launcher as default home...")
             out, err, rc = adb(
                 "shell cmd package set-home-activity"
-                " com.example.webkiosk/.kiosklauncher.LauncherActivity")
+                " com.example.webkiosk/com.example.kiosklauncher.LauncherActivity")
             if rc == 0:
                 self.log_add("Custom launcher set as home. ✅")
             else:
@@ -428,22 +450,27 @@ class KioskManager:
                 " -a android.intent.action.MAIN"
                 " -c android.intent.category.LAUNCHER")
             if rc == 0:
+                # Keep the kiosk app itself, the clock, plus Chrome and
+                # system Settings - both are allowlisted for lock task mode
+                # and exposed as buttons in the launcher/kiosk UI.
+                KEEP = {PACKAGE, "com.google.android.deskclock",
+                        "com.android.chrome", "com.android.settings"}
                 hidden = 0
                 for line in out.splitlines():
                     if line.strip().startswith("com."):
                         pkg = line.strip().split("/")[0]
-                        if pkg not in (PACKAGE, "com.google.android.deskclock"):
+                        if pkg not in KEEP:
                             adb(f"shell pm disable-user --user 0 {pkg}")
                             hidden += 1
                 self.log_add(f"  {hidden} apps hidden from app drawer. ✅")
-                self.log_add("  Keeping: Kiosk, Clock.")
+                self.log_add("  Keeping: Kiosk, Clock, Chrome, Settings.")
             else:
                 self.log_add("  Could not query app drawer.")
 
-            # Step 6: verify lock task allowlist
+            # Step 6: verify lock task allowlist (cross-platform parse)
             self.log_add("[6/6] Checking lock task allowlist...")
-            out, err, rc = adb("shell dumpsys device_policy 2>nul | findstr \"LockTaskPolicy\"")
-            if PACKAGE in out:
+            out, err, rc = adb("shell dumpsys device_policy")
+            if PACKAGE in (out or ""):
                 self.log_add("Kiosk app is allowlisted for lock task mode. ✅")
                 if "com.android.chrome" in out:
                     self.log_add("Chrome is allowlisted. ✅")
@@ -459,7 +486,7 @@ class KioskManager:
             self.log_add("\n=== DONE ===")
             self.log_add("Tap 'CU Denver Equity' on the tablet to enter kiosk mode.")
             self.check_status()
-            messagebox.showinfo("Setup Complete",
+            self.askbox("showinfo", "Setup Complete",
                                 "Kiosk is ready!\n\n"
                                 "On the tablet, tap 'CU Denver Equity' to enter\n"
                                 "kiosk mode. Chrome and WiFi settings can now\n"
@@ -475,7 +502,7 @@ class KioskManager:
             self.log_add("App stopped. Tablet should return to home screen. ✅")
             self.log_add("To fully remove: Settings > Security > Device Admin Apps > deactivate the kiosk app")
             self.check_status()
-            messagebox.showinfo("Kiosk Exited",
+            self.askbox("showinfo", "Kiosk Exited",
                                 "The kiosk app has been stopped.\n\n"
                                 "Your tablet should be back to normal.")
 
@@ -505,7 +532,7 @@ class KioskManager:
             self.log_add(f"Re-enabled {count} apps. ✅")
             self.log_add("App drawer is fully restored.")
             self.check_status()
-            messagebox.showinfo("Apps Restored",
+            self.askbox("showinfo", "Apps Restored",
                                 f"{count} apps have been re-enabled.\n\n"
                                 "The tablet app drawer is back to normal.")
 
