@@ -3,4 +3,33 @@
     <string name="app_name">CU Denver Equity</string>
     <string name="device_admin_label">CU Denver Equity Kiosk</string>
     <string name="device_admin_description">Manages kiosk lock task mode so the kiosk app, Chrome, and WiFi settings can run.</string>
+
+    <string name="web_view_description">CU Denver Equity Office website</string>
+    <string name="error_page_title">Page Unavailable</string>
+    <string name="error_page_message">The website could not be loaded.\nPlease check your internet connection.</string>
+    <string name="btn_retry">Retry</string>
+    <string name="btn_retry_description">Retry loading the website</string>
+
+    <string name="clock_description">Current time</string>
+    <string name="kiosk_app_title">CU Denver Equity</string>
+    <string name="launch_kiosk_description">Open CU Denver Equity website</string>
+    <string name="tap_to_open">Tap to open</string>
+    <string name="btn_chrome">Chrome</string>
+    <string name="open_chrome_description">Open Google Chrome</string>
+    <string name="btn_sys_wifi">WiFi Settings</string>
+    <string name="open_sys_wifi_description">Open system WiFi settings</string>
+    <string name="btn_add_wifi">Add WiFi Network</string>
+    <string name="open_add_wifi_description">Add a WiFi network</string>
+
+    <string name="wifi_settings_title">WiFi Settings</string>
+    <string name="label_ssid">Network name (SSID)</string>
+    <string name="hint_ssid">e.g. CU Denver Guest</string>
+    <string name="ssid_input_description">WiFi network name input field</string>
+    <string name="label_password">Password (leave blank for an open network)</string>
+    <string name="hint_password">WiFi password</string>
+    <string name="password_input_description">WiFi password input field</string>
+    <string name="btn_connect">Connect to this network</string>
+    <string name="connect_button_description">Connect to the entered WiFi network</string>
+    <string name="btn_back">Back</string>
+    <string name="back_button_description">Return to previous screen</string>
 </resources>

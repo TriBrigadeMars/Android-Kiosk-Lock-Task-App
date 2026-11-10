@@ -3,29 +3,31 @@ package com.example.webkiosk;
 import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
 import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.Gravity;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.WindowManager;
+import android.webkit.CookieManager;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
+import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceResponse;
-import android.net.Uri;
 import android.widget.Button;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private WebView webView;
+    private View errorLayout;
+    private Button btnRetry;
     private boolean isDarkMode = false;
     private boolean mInLockTask = false;
 
@@ -37,28 +39,38 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Prevent screen capture & recording for FERPA privacy compliance
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        setContentView(R.layout.activity_main);
 
         // Restore dark mode preference
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        android.content.SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         isDarkMode = prefs.getBoolean(KEY_DARK_MODE, false);
 
-        webView = new WebView(this);
-        webView.setContentDescription("CU Denver Equity Office website");
-        webView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        webView = findViewById(R.id.web_view);
+        errorLayout = findViewById(R.id.error_layout);
+        btnRetry = findViewById(R.id.btn_retry);
+
+        btnRetry.setOnClickListener(v -> {
+            errorLayout.setVisibility(View.GONE);
+            webView.setVisibility(View.VISIBLE);
+            webView.reload();
+        });
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
+        settings.setDomStorageEnabled(false); // Disable DOM storage caching
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
-        // Stability: limit cache and enable safe browsing
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        // Disable features that can cause crashes
+        // FERPA Hardening: disable caching, enforce HTTPS mixed content restrictions
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSaveFormData(false);
         settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setDatabaseEnabled(false);
 
         applyDarkMode();
 
@@ -81,97 +93,25 @@ public class MainActivity extends Activity {
             }
 
             @Override
-            public void onReceivedError(WebView view, WebResourceRequest request,
-                                         WebResourceError error) {
-                // Gracefully handle page load errors instead of crashing
-                if (request.isForMainFrame()) {
-                    view.loadData(
-                            "<html><body style='text-align:center;padding:40px;font-family:sans-serif;color:#333'>"
-                            + "<h2>Page Unavailable</h2>"
-                            + "<p>The website could not be loaded.</p>"
-                            + "<p>Please check your internet connection.</p>"
-                            + "<br><button onclick='location.reload()' "
-                            + "style='padding:10px 20px;font-size:16px'>Retry</button>"
-                            + "</body></html>",
-                            "text/html", "UTF-8");
-                }
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                // When a new navigation starts, show webView and hide error layout
+                errorLayout.setVisibility(View.GONE);
+                webView.setVisibility(View.VISIBLE);
             }
 
             @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                // Apply dark mode after page loads (for CSS injection method)
-                if (isDarkMode && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    injectDarkModeCSS();
+            public void onReceivedError(WebView view, WebResourceRequest request,
+                                         WebResourceError error) {
+                // Gracefully handle page load errors with native layout
+                if (request.isForMainFrame()) {
+                    webView.setVisibility(View.GONE);
+                    errorLayout.setVisibility(View.VISIBLE);
                 }
             }
         });
 
         webView.loadUrl(START_URL);
-
-        // Container so we can overlay small buttons on top of the web page.
-        // Lets a user open Chrome or re-add WiFi credentials if the tablet
-        // gets disconnected.
-        FrameLayout container = new FrameLayout(this);
-        container.addView(webView, new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT));
-
-        // Bottom-right overlay bar with Chrome and WiFi buttons.
-        LinearLayout overlay = new LinearLayout(this);
-        overlay.setOrientation(LinearLayout.HORIZONTAL);
-        overlay.setGravity(Gravity.CENTER);
-
-        Button chromeButton = new Button(this);
-        chromeButton.setText("Chrome");
-        chromeButton.setTextSize(14);
-        chromeButton.setContentDescription("Open Google Chrome");
-        chromeButton.setOnClickListener(v -> openChrome());
-        overlay.addView(chromeButton);
-
-        Button wifiButton = new Button(this);
-        wifiButton.setText("WiFi");
-        wifiButton.setTextSize(14);
-        wifiButton.setContentDescription("Open WiFi settings");
-        wifiButton.setOnClickListener(v -> openWifiSettings());
-        overlay.addView(wifiButton);
-
-        FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.WRAP_CONTENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT);
-        overlayParams.gravity = Gravity.BOTTOM | Gravity.END;
-        overlayParams.setMargins(0, 0, 24, 24);
-        overlay.setLayoutParams(overlayParams);
-        container.addView(overlay);
-
-        setContentView(container);
-
-        // If this app is the device owner, make sure Chrome and WiFi settings
-        // are in the lock task allowlist so they can run in kiosk mode.
-        KioskDeviceAdminReceiver.configureLockTask(this);
-    }
-
-    private void openChrome() {
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"));
-            intent.setPackage("com.android.chrome");
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Chrome is not installed.", Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void openWifiSettings() {
-        try {
-            android.content.Intent intent = new android.content.Intent();
-            intent.setClassName(getPackageName(), "com.example.webkiosk.WifiSettingsActivity");
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
-        } catch (Exception e) {
-            Toast.makeText(this, "Could not open WiFi settings.",
-                    Toast.LENGTH_LONG).show();
-        }
     }
 
     // ========== Fullscreen ==========
@@ -207,25 +147,16 @@ public class MainActivity extends Activity {
 
     // ========== Dark Mode ==========
 
+    @SuppressWarnings("deprecation")
     private void applyDarkMode() {
+        WebSettings settings = webView.getSettings();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            WebSettings settings = webView.getSettings();
+            settings.setAlgorithmicDarkeningAllowed(isDarkMode);
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             settings.setForceDark(isDarkMode
                     ? WebSettings.FORCE_DARK_ON
                     : WebSettings.FORCE_DARK_OFF);
         }
-    }
-
-    private void injectDarkModeCSS() {
-        if (!isDarkMode) return;
-        String js = "javascript:(function(){" +
-            "if(document.getElementById('kiosk-dark'))return;" +
-            "var css='html{filter:invert(1) hue-rotate(180deg)}" +
-            "img,video,canvas,iframe{filter:invert(1) hue-rotate(180deg)}';" +
-            "var s=document.createElement('style');s.id='kiosk-dark';" +
-            "s.innerHTML=css;document.head.appendChild(s);" +
-            "})()";
-        webView.evaluateJavascript(js, null);
     }
 
     // ========== Navigation ==========
@@ -255,6 +186,7 @@ public class MainActivity extends Activity {
 
     private void exitToHome() {
         Toast.makeText(this, "Returning to home screen...", Toast.LENGTH_SHORT).show();
+        clearSessionData();
 
         android.content.Intent homeIntent = new android.content.Intent(
                 android.content.Intent.ACTION_MAIN);
@@ -276,11 +208,64 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ========== FERPA Session & Inactivity Handling ==========
+
+    private static final long INACTIVITY_TIMEOUT_MS = 180000; // 3 minutes
+    private Handler inactivityHandler = new Handler(Looper.getMainLooper());
+    private Runnable inactivityRunnable = new Runnable() {
+        @Override
+        public void run() {
+            onInactivityTimeout();
+        }
+    };
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        resetInactivityTimer();
+    }
+
+    private void resetInactivityTimer() {
+        if (inactivityHandler != null && inactivityRunnable != null) {
+            inactivityHandler.removeCallbacks(inactivityRunnable);
+            inactivityHandler.postDelayed(inactivityRunnable, INACTIVITY_TIMEOUT_MS);
+        }
+    }
+
+    private void stopInactivityTimer() {
+        if (inactivityHandler != null && inactivityRunnable != null) {
+            inactivityHandler.removeCallbacks(inactivityRunnable);
+        }
+    }
+
+    private void onInactivityTimeout() {
+        Toast.makeText(this, "Session reset due to inactivity", Toast.LENGTH_SHORT).show();
+        clearSessionData();
+        if (webView != null) {
+            webView.loadUrl(START_URL);
+        }
+    }
+
+    private void clearSessionData() {
+        if (webView != null) {
+            webView.clearCache(true);
+            webView.clearHistory();
+            webView.clearFormData();
+        }
+        try {
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.removeAllCookies(null);
+            cookieManager.flush();
+            WebStorage.getInstance().deleteAllData();
+        } catch (Exception ignored) {}
+    }
+
     // ========== Lifecycle ==========
 
     @Override
     protected void onResume() {
         super.onResume();
+        resetInactivityTimer();
         if (!mInLockTask) {
             DevicePolicyManager dpm = (DevicePolicyManager)
                     getSystemService(Context.DEVICE_POLICY_SERVICE);
@@ -298,6 +283,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        stopInactivityTimer();
         // Pause WebView to reduce memory pressure
         try {
             webView.onPause();
@@ -306,6 +292,8 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        stopInactivityTimer();
+        clearSessionData();
         // Clean up WebView to prevent memory leaks
         if (webView != null) {
             webView.loadUrl("about:blank");

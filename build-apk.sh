@@ -5,10 +5,38 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -W)"
 SCRIPT_DIR="${SCRIPT_DIR//\\//}"
 
-JDK="$SCRIPT_DIR/jdk/jdk-17.0.20+8"
-SDK="$SCRIPT_DIR/android-sdk"
-BUILD_TOOLS="$SDK/build-tools/35.0.0"
-PLATFORM="$SDK/platforms/android-35"
+JDK_DIR=""
+if [ -d "$SCRIPT_DIR/jdk/jdk-17.0.20+8" ]; then
+  JDK="$SCRIPT_DIR/jdk/jdk-17.0.20+8"
+elif [ -d "C:/Program Files/Android/Android Studio/jbr" ]; then
+  JDK="C:/Program Files/Android/Android Studio/jbr"
+else
+  JDK="$JAVA_HOME"
+fi
+
+if [ -d "$SCRIPT_DIR/android-sdk" ]; then
+  SDK="$SCRIPT_DIR/android-sdk"
+elif [ -d "C:/Users/cruzmars/AppData/Local/Android/Sdk" ]; then
+  SDK="C:/Users/cruzmars/AppData/Local/Android/Sdk"
+else
+  SDK="$ANDROID_HOME"
+fi
+
+if [ -d "$SDK/build-tools/35.0.0" ]; then
+  BUILD_TOOLS="$SDK/build-tools/35.0.0"
+elif [ -d "$SDK/build-tools/36.0.0" ]; then
+  BUILD_TOOLS="$SDK/build-tools/36.0.0"
+else
+  BUILD_TOOLS="$(ls -d "$SDK/build-tools/"* 2>/dev/null | tail -n 1)"
+fi
+
+if [ -d "$SDK/platforms/android-35" ]; then
+  PLATFORM="$SDK/platforms/android-35"
+elif [ -d "$SDK/platforms/android-37.0" ]; then
+  PLATFORM="$SDK/platforms/android-37.0"
+else
+  PLATFORM="$(ls -d "$SDK/platforms/"* 2>/dev/null | tail -n 1)"
+fi
 ANDROID_JAR="$PLATFORM/android.jar"
 
 OUT_DIR="$SCRIPT_DIR/build"
@@ -51,6 +79,7 @@ echo "=== Linking resources ==="
 
 echo "=== Compiling Java ==="
 "$JAVA_BIN/javac" \
+  -source 11 -target 11 \
   -d "$OBJ_DIR" \
   -cp "$ANDROID_JAR" \
   "$GEN_DIR/com/example/webkiosk/R.java" \

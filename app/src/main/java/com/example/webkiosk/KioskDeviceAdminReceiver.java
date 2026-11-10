@@ -6,6 +6,8 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.UserManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,24 @@ public class KioskDeviceAdminReceiver extends DeviceAdminReceiver {
             dpm.setLockTaskPackages(admin, installed.toArray(new String[0]));
         } catch (Exception e) {
             // Ignore — lock task will simply not include unavailable packages.
+        }
+
+        // Apply FERPA & Kiosk Hardening User Restrictions
+        try {
+            dpm.addUserRestriction(admin, UserManager.DISALLOW_SAFE_BOOT);
+            dpm.addUserRestriction(admin, UserManager.DISALLOW_FACTORY_RESET);
+            dpm.addUserRestriction(admin, UserManager.DISALLOW_USB_FILE_TRANSFER);
+        } catch (Exception e) {
+            // Ignore restrictions if not supported
+        }
+
+        // Strictly limit Lock Task features (disable home, status bar, overview, notifications)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                dpm.setLockTaskFeatures(admin, DevicePolicyManager.LOCK_TASK_FEATURE_NONE);
+            } catch (Exception e) {
+                // Safe to ignore if feature setting fails
+            }
         }
     }
 }

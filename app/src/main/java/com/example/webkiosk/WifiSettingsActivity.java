@@ -7,17 +7,18 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.TransportInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.net.wifi.WifiNetworkSuggestion;
 import android.os.Build;
 import android.os.Bundle;
-import android.view.Gravity;
-import android.view.View;
-import android.widget.Button;
+import android.view.KeyEvent;
+import android.view.WindowManager;
 import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -50,83 +51,20 @@ public class WifiSettingsActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // Prevent screen capture & recording for FERPA privacy compliance
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        setContentView(R.layout.activity_wifi_settings);
 
         wifiManager = (WifiManager) getApplicationContext()
                 .getSystemService(Context.WIFI_SERVICE);
 
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout layout = new LinearLayout(this);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(48, 48, 48, 48);
-        layout.setBackgroundColor(0xFF1a3c6d);
+        statusView = findViewById(R.id.status_view);
+        ssidInput = findViewById(R.id.edit_ssid);
+        passwordInput = findViewById(R.id.edit_password);
+        messageView = findViewById(R.id.message_view);
 
-        TextView title = new TextView(this);
-        title.setText("WiFi Settings");
-        title.setTextColor(0xFFFFFFFF);
-        title.setTextSize(26);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, 24);
-        layout.addView(title);
-
-        statusView = new TextView(this);
-        statusView.setTextColor(0xFFCCE0FF);
-        statusView.setTextSize(16);
-        statusView.setPadding(0, 0, 0, 24);
-        layout.addView(statusView);
-
-        TextView ssidLabel = new TextView(this);
-        ssidLabel.setText("Network name (SSID)");
-        ssidLabel.setTextColor(0xFFFFFFFF);
-        ssidLabel.setTextSize(16);
-        layout.addView(ssidLabel);
-
-        ssidInput = new EditText(this);
-        ssidInput.setSingleLine(true);
-        ssidInput.setHint("e.g. CU Denver Guest");
-        ssidInput.setTextColor(0xFF000000);
-        ssidInput.setHintTextColor(0xFF888888);
-        ssidInput.setBackgroundColor(0xFFFFFFFF);
-        ssidInput.setPadding(16, 16, 16, 16);
-        layout.addView(ssidInput);
-
-        TextView passLabel = new TextView(this);
-        passLabel.setText("Password (leave blank for an open network)");
-        passLabel.setTextColor(0xFFFFFFFF);
-        passLabel.setTextSize(16);
-        passLabel.setPadding(0, 24, 0, 0);
-        layout.addView(passLabel);
-
-        passwordInput = new EditText(this);
-        passwordInput.setSingleLine(true);
-        passwordInput.setHint("WiFi password");
-        passwordInput.setTextColor(0xFF000000);
-        passwordInput.setHintTextColor(0xFF888888);
-        passwordInput.setBackgroundColor(0xFFFFFFFF);
-        passwordInput.setPadding(16, 16, 16, 16);
-        layout.addView(passwordInput);
-
-        Button connect = new Button(this);
-        connect.setText("Connect to this network");
-        connect.setTextSize(16);
-        connect.setPadding(24, 24, 24, 24);
-        connect.setOnClickListener(v -> addNetwork());
-        layout.addView(connect);
-
-        messageView = new TextView(this);
-        messageView.setTextColor(0xFFFFD27F);
-        messageView.setTextSize(15);
-        messageView.setPadding(0, 24, 0, 0);
-        layout.addView(messageView);
-
-        Button back = new Button(this);
-        back.setText("Back");
-        back.setTextSize(16);
-        back.setPadding(24, 24, 24, 24);
-        back.setOnClickListener(v -> finish());
-        layout.addView(back);
-
-        scroll.addView(layout);
-        setContentView(scroll);
+        findViewById(R.id.btn_connect).setOnClickListener(v -> addNetwork());
+        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
         updateStatus();
     }
@@ -137,7 +75,11 @@ public class WifiSettingsActivity extends Activity {
         IntentFilter filter = new IntentFilter();
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.NETWORK_STATE_CHANGED_ACTION);
-        registerReceiver(wifiReceiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(wifiReceiver, filter, Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(wifiReceiver, filter);
+        }
         updateStatus();
     }
 
@@ -164,11 +106,39 @@ public class WifiSettingsActivity extends Activity {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private String getCurrentSsid() {
-        WifiInfo info = wifiManager.getConnectionInfo();
-        if (info == null) return null;
-        String ssid = info.getSSID();
-        if (ssid == null) return null;
+        String ssid = null;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                Network activeNetwork = cm.getActiveNetwork();
+                if (activeNetwork != null) {
+                    NetworkCapabilities caps = cm.getNetworkCapabilities(activeNetwork);
+                    if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                        TransportInfo transportInfo = caps.getTransportInfo();
+                        if (transportInfo instanceof WifiInfo) {
+                            WifiInfo wifiInfo = (WifiInfo) transportInfo;
+                            ssid = wifiInfo.getSSID();
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback for API < 31 or if ConnectivityManager returned null/unknown
+        if ((ssid == null || "<unknown ssid>".equals(ssid)) && wifiManager != null) {
+            WifiInfo info = wifiManager.getConnectionInfo();
+            if (info != null) {
+                ssid = info.getSSID();
+            }
+        }
+
+        if (ssid == null || "<unknown ssid>".equals(ssid)) {
+            return null;
+        }
+
         if (ssid.startsWith("\"") && ssid.endsWith("\"") && ssid.length() > 1) {
             ssid = ssid.substring(1, ssid.length() - 1);
         }
@@ -247,9 +217,25 @@ public class WifiSettingsActivity extends Activity {
             }
             if (granted) {
                 messageView.setText("Permission granted. Tap Connect again.");
+                updateStatus();
             } else {
                 messageView.setText("Permission denied. WiFi connection requires this permission.");
             }
         }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            finish();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public void onBackPressed() {
+        finish();
     }
 }
