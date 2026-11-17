@@ -49,11 +49,12 @@ jobs:
             mv android-sdk/cmdline-tools/cmdline-tools android-sdk/cmdline-tools/latest
             rm cmdline-tools.zip
           fi
-          export JAVA_HOME=$(ls -d jdk/jdk-*/)
+          JDK_DIR="$(ls -d jdk/jdk-* | head -n 1)"
+          export JAVA_HOME="$PWD/${JDK_DIR%/}"
           export ANDROID_SDK_ROOT="$PWD/android-sdk"
-          # Accept licenses + install platform/build-tools (best-effort)
-          echo y | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager.bat" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true
-          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager.bat" --sdk_root="$ANDROID_SDK_ROOT" "platforms;android-35" "build-tools;35.0.0"
+          # Accept licenses + install platform/build-tools
+          yes 2>/dev/null | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager.bat" --sdk_root="$ANDROID_SDK_ROOT" --licenses >/dev/null 2>&1 || true
+          yes 2>/dev/null | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager.bat" --sdk_root="$ANDROID_SDK_ROOT" "platforms;android-35" "build-tools;35.0.0"
           bash build-apk.sh
 
       - name: Verify built APK
@@ -81,22 +82,6 @@ jobs:
           name: Windows-EXE
           path: dist/CU-Denver-Equity-Kiosk-Manager.exe
           retention-days: 30
-
-      # Rolling "latest" release — always keeps the newest .exe downloadable
-      # from the repo's Releases page, no tag or PR required.
-      - name: Publish rolling latest release (push to main/master)
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-        uses: softprops/action-gh-release@v3
-        with:
-          tag_name: latest
-          name: Latest build
-          body: |
-            Latest Windows build of the CU Denver Equity Kiosk Manager.
-            Built automatically from the latest commit on main/master.
-            Download `CU-Denver-Equity-Kiosk-Manager.exe` below, double-click it,
-            connect the tablet via USB, and click **Setup Kiosk**.
-          files: dist/CU-Denver-Equity-Kiosk-Manager.exe
-          fail_on_unmatched_files: true
 
       # Versioned release — attach the .exe when a version tag is pushed.
       - name: Create versioned GitHub Release (on version tag)

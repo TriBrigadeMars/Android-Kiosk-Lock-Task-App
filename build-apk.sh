@@ -5,7 +5,13 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -W)"
 SCRIPT_DIR="${SCRIPT_DIR//\\//}"
 
-JDK="$SCRIPT_DIR/jdk/jdk-17.0.20+8"
+if [ -n "${JAVA_HOME:-}" ] && [ -d "$JAVA_HOME/bin" ]; then
+  JDK="${JAVA_HOME%/}"
+elif [ -d "$SCRIPT_DIR/jdk/jdk-17.0.20+8" ]; then
+  JDK="$SCRIPT_DIR/jdk/jdk-17.0.20+8"
+else
+  JDK="$(ls -d "$SCRIPT_DIR/jdk/"jdk-* 2>/dev/null | head -n 1)"
+fi
 SDK="$SCRIPT_DIR/android-sdk"
 BUILD_TOOLS="$SDK/build-tools/35.0.0"
 PLATFORM="$SDK/platforms/android-35"
