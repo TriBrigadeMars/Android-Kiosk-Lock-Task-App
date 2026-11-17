@@ -175,7 +175,31 @@ def verify_home(device):
         raise ProvisioningError("The kiosk launcher is not the resolved Home activity for user 0.")
 
 
-def verify_lock_task(output):
+def _device_policy_lock_task_flags_zero(policy_output):
+    if not policy_output:
+        return False
+    for match in re.finditer(r"(?m)^([ \t]*)User 0:[ \t]*$", policy_output):
+        indent = len(match[1])
+        lines = []
+        for line in policy_output[match.end():].splitlines():
+            if line.strip() and len(line) - len(line.lstrip()) <= indent:
+                break
+            lines.append(line)
+        block = "\n".join(lines)
+        resolved = re.search(
+            r"DefaultPolicyKey lockTask\b.*?Resolved Policy \([^)]+\):\s*\n"
+            r"[ \t]*LockTaskPolicy \{mPackages=\s*([^;]+);\s*mFlags=\s*0\s*\}",
+            block,
+            re.S,
+        )
+        if resolved:
+            packages = {pkg.strip() for pkg in resolved[1].split(",") if pkg.strip()}
+            if packages == LOCK_PACKAGES:
+                return True
+    return False
+
+
+def verify_lock_task(output, policy_output=""):
     packages = re.search(
         r"mLockTaskPackages \(userId:packages\)=\s*\n((?:[ \t]+u\d+:\[[^\n]*\]\s*\n?)+)", output,
     )
@@ -186,7 +210,10 @@ def verify_lock_task(output):
     features = re.search(
         r"mLockTaskFeatures \(userId:flags\)=\s*\n((?:[ \t]+u\d+:[^\n]+\n?)+)", output,
     )
-    if not features or not re.search(r"(?m)^\s*u0:0\s*$", features[1]):
+    if features:
+        if not re.search(r"(?m)^\s*u0:0\s*$", features[1]):
+            raise ProvisioningError("User 0 lock-task features are not verified as disabled.")
+    elif not _device_policy_lock_task_flags_zero(policy_output):
         raise ProvisioningError("User 0 lock-task features are not verified as disabled.")
     if not re.search(r"\bmLockTaskModeState=LOCKED\b", output):
         raise ProvisioningError("Managed lock task is not active (screen pinning does not qualify).")
@@ -218,13 +245,20 @@ def verify_restrictions(output):
         raise ProvisioningError("Required user restrictions are missing or unrecognized: " + ", ".join(sorted(RESTRICTIONS - enabled)))
 
 
+def _read_lock_task_policy_fallback(device, activity_state):
+    if re.search(r"mLockTaskFeatures \(userId:flags\)=", activity_state):
+        return ""
+    return device.output(["shell", "dumpsys", "device_policy"])
+
+
 def verify_setup(device):
     device.require_primary_user()
     verify_owner(device)
     verify_home(device)
     verify_required_packages(device)
     verify_restrictions(device.output(["shell", "dumpsys", "user"]))
-    verify_lock_task(device.output(["shell", "dumpsys", "activity", "activities"]))
+    activity_state = device.output(["shell", "dumpsys", "activity", "activities"])
+    verify_lock_task(activity_state, _read_lock_task_policy_fallback(device, activity_state))
 
 
 def setup(device, apk, state_path, log=lambda message: None):
@@ -270,8 +304,9 @@ def setup(device, apk, state_path, log=lambda message: None):
     # state during this bounded wait; never repeat installation or enrollment.
     for attempt in range(5):
         activity_state = device.output(["shell", "dumpsys", "activity", "activities"])
+        policy_state = _read_lock_task_policy_fallback(device, activity_state)
         try:
-            verify_lock_task(activity_state)
+            verify_lock_task(activity_state, policy_state)
             break
         except ProvisioningError:
             if attempt == 4:

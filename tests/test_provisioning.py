@@ -260,6 +260,27 @@ class ProvisioningTests(unittest.TestCase):
             with self.subTest(dump=dump), self.assertRaises(p.ProvisioningError):
                 p.verify_lock_task(dump)
 
+        android16_activities = valid.split("  mLockTaskFeatures")[0]
+        android16_policy = (
+            "  Local Policies:\n"
+            "    User 0:\n"
+            "      DefaultPolicyKey lockTask\n"
+            "        Per-admin Policy:\n"
+            "          EnforcingAdmin { mPackageName= com.example.webkiosk }\n"
+            "            LockTaskPolicy {mPackages= com.example.webkiosk, com.android.settings, com.android.chrome; mFlags= 0 }\n"
+            "        Resolved Policy (TopPriority):\n"
+            "          LockTaskPolicy {mPackages= com.example.webkiosk, com.android.settings, com.android.chrome; mFlags= 0 }\n"
+        )
+        p.verify_lock_task(android16_activities, android16_policy)
+        for bad_policy in (
+            "",
+            android16_policy.replace("mFlags= 0", "mFlags= 16"),
+            android16_policy.replace("User 0:", "User 10:"),
+            android16_policy.replace(", com.android.chrome", ""),
+        ):
+            with self.subTest(bad_policy=bad_policy), self.assertRaises(p.ProvisioningError):
+                p.verify_lock_task(android16_activities, bad_policy)
+
     def test_lock_task_missing_never_reports_completion(self):
         self.fake.start_locked = False
         messages = []
