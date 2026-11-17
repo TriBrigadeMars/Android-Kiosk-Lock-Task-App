@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.PersistableBundle;
 import android.os.UserManager;
 
 import java.util.ArrayList;
@@ -29,6 +30,12 @@ public class KioskDeviceAdminReceiver extends DeviceAdminReceiver {
     @Override
     public void onEnabled(Context context, Intent intent) {
         super.onEnabled(context, intent);
+        configureLockTask(context);
+    }
+
+    @Override
+    public void onTransferOwnershipComplete(Context context, PersistableBundle bundle) {
+        super.onTransferOwnershipComplete(context, bundle);
         configureLockTask(context);
     }
 
