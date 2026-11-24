@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1a3c6d"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <TextView
+            android:id="@+id/clock_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:contentDescription="@string/clock_description"
+            android:gravity="center"
+            android:paddingBottom="40dp"
+            android:textColor="#FFFFFF"
+            android:textSize="36sp" />
+
+        <Button
+            android:id="@+id/btn_launch_kiosk"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:background="#2d5a8f"
+            android:contentDescription="@string/launch_kiosk_description"
+            android:focusable="true"
+            android:gravity="center"
+            android:padding="20dp"
+            android:text="@string/kiosk_app_title"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/tap_to_open"
+            android:textColor="#CCCCCC"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_chrome"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:layout_marginTop="36dp"
+            android:background="#2d5a8f"
+            android:contentDescription="@string/open_chrome_description"
+            android:focusable="true"
+            android:gravity="center"
+            android:padding="16dp"
+            android:text="@string/btn_chrome"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btn_sys_wifi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:layout_marginTop="12dp"
+            android:background="#2d5a8f"
+            android:contentDescription="@string/open_sys_wifi_description"
+            android:focusable="true"
+            android:gravity="center"
+            android:padding="16dp"
+            android:text="@string/btn_sys_wifi"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btn_add_wifi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:layout_marginTop="12dp"
+            android:background="#2d5a8f"
+            android:contentDescription="@string/open_add_wifi_description"
+            android:focusable="true"
+            android:gravity="center"
+            android:padding="16dp"
+            android:text="@string/btn_add_wifi"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+</ScrollView>
